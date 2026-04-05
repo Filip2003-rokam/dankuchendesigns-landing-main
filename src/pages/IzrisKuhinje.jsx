@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { base44 } from '@/api/base44Client';
+import { createKitchenRequest } from '@/api/supabaseData';
 
 export default function IzrisKuhinje() {
   const [step, setStep] = useState(0);
@@ -95,7 +95,7 @@ export default function IzrisKuhinje() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await base44.entities.KitchenRequest.create({
+      await createKitchenRequest({
         ime: formData.firstName,
         prezime: formData.lastName,
         email: formData.email,

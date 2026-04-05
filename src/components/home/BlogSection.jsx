@@ -2,13 +2,13 @@ import React from 'react';
 import { Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { base44 } from '@/api/base44Client';
+import { listPublishedBlogPosts } from '@/api/supabaseData';
 import { useQuery } from '@tanstack/react-query';
 
 export default function BlogSection() {
   const { data: blogPosts = [], isLoading } = useQuery({
     queryKey: ['blogPosts'],
-    queryFn: () => base44.entities.BlogPost.filter({ status: 'objavljeno' }, '-datum', 3),
+    queryFn: () => listPublishedBlogPosts(3),
   });
 
   if (isLoading) {

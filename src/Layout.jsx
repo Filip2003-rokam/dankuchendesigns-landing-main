@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import { Menu, X } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function Layout({ children, currentPageName }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [user, setUser] = useState(null);
   const location = useLocation();
+  const { adminLocal } = useAuth();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -25,18 +25,6 @@ export default function Layout({ children, currentPageName }) {
     }
   }, [location.hash]);
 
-  useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const currentUser = await base44.auth.me();
-        setUser(currentUser);
-      } catch (error) {
-        // User not logged in
-      }
-    };
-    checkUser();
-  }, []);
-
   const menuItems = [
     { label: 'AKTUELNO', page: 'Blog' },
     { label: 'KUHINJE', page: 'ModerneKuhinje' },
@@ -46,7 +34,7 @@ export default function Layout({ children, currentPageName }) {
     { label: 'KONTAKT', page: 'Home', hash: '#kontakt' },
   ];
 
-  if (user?.role === 'admin') {
+  if (adminLocal) {
     menuItems.push({ label: 'ADMIN', page: 'Admin' });
   }
 

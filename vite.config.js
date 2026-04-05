@@ -1,19 +1,31 @@
-import base44 from "@base44/vite-plugin"
 import react from '@vitejs/plugin-react'
+import { copyFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
+
+let spaOutDir
 
 // https://vite.dev/config/
 export default defineConfig({
-  logLevel: 'error', // Suppress warnings, only show errors
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+    },
+  },
   plugins: [
-    base44({
-      // Support for legacy code that imports the base44 SDK with @/integrations, @/entities, etc.
-      // can be removed if the code has been updated to use the new SDK imports from @base44/sdk
-      legacySDKImports: process.env.BASE44_LEGACY_SDK_IMPORTS === 'true',
-      hmrNotifier: true,
-      navigationNotifier: true,
-      visualEditAgent: true
-    }),
+    {
+      name: 'spa-github-pages-404',
+      apply: 'build',
+      configResolved(config) {
+        spaOutDir = resolve(config.root, config.build.outDir)
+      },
+      closeBundle() {
+        copyFileSync(resolve(spaOutDir, 'index.html'), resolve(spaOutDir, '404.html'))
+      },
+    },
     react(),
   ]
 });

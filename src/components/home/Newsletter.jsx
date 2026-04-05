@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { base44 } from '@/api/base44Client';
+import { createNewsletterSubscription } from '@/api/supabaseData';
 import { toast } from 'sonner';
 
 export default function Newsletter() {
@@ -15,7 +15,7 @@ export default function Newsletter() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await base44.entities.NewsletterSubscription.create({
+      await createNewsletterSubscription({
         ime: firstName,
         prezime: lastName,
         email: email,

@@ -1,39 +1,22 @@
-**Welcome to your Base44 project** 
+# DanKüchen landing
 
-**About**
+React (Vite) sajt sa blogom, formama za kuhinju i newsletter — backend je **Supabase**.
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+## Lokalno pokretanje
 
-This project contains everything you need to run your app locally.
+1. `npm install`
+2. U `.env` (ili `.env.local`) postavi:
+   - **VITE_SUPABASE_URL** — Project Settings → API → Project URL
+   - **VITE_SUPABASE_ANON_KEY** *ili* **VITE_SUPABASE_PUBLISHABLE_KEY** — javni ključ (anon JWT ili `sb_publishable_...`)
+   - **VITE_SUPABASE_SERVICE_ROLE_KEY** — **service_role** secret (isti ekran u API podešavanjima); potreban za **admin panel** (liste, blog CRUD). Ne objavljuj ovaj ključ.
+3. **Baza:** u Supabase **SQL Editor** pokreni ceo fajl **`supabase/schema.sql`** (jednom). Detalji: vidi **`supabase/README.md`**. Opciono pokreni **`supabase/seed.sql`** za jedan test blog post.
+4. **Admin prijava** je lokalna (email/šifra u `Admin.jsx` ili preko `VITE_ADMIN_EMAIL` / `VITE_ADMIN_PASSWORD` u `.env`).
+5. `npm run dev`
 
-**Edit the code in your local development environment**
+## Produkcija
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+U hosting panelu dodaj iste `VITE_*` varijable. **Ne** stavljaj service role u javni repozitorijum.
 
-**Prerequisites:** 
+## Dokumentacija
 
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
-
-```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
-
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
-```
-
-Run the app: `npm run dev`
-
-**Publish your changes**
-
-Open [Base44.com](http://Base44.com) and click on Publish.
-
-**Docs & Support**
-
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
-
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+- [Supabase](https://supabase.com/docs)

@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { isSupabaseConfigured, isSupabaseAdminConfigured } from '@/lib/supabaseClient';
+import {
+  listKitchenRequests,
+  updateKitchenRequestStatus,
+  listNewsletterSubscriptions,
+  listAllBlogPosts,
+  createBlogPost,
+  updateBlogPost,
+  deleteBlogPost,
+} from '@/api/supabaseData';
+import { useAuth } from '@/lib/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,15 +20,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Users, Calendar, CheckCircle2, Clock, XCircle, Eye, Mail, Download, Plus, Edit2, Trash2 } from 'lucide-react';
 
-const ADMIN_EMAIL = 'dk.vidikovac@gmail.com';
-const ADMIN_PASSWORD = 'kanjodesign2026';
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL?.trim() || 'dk.vidikovac@gmail.com';
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'kanjodesign2026';
 
 export default function Admin() {
-  const [authenticated, setAuthenticated] = useState(false);
+  const { adminLocal, loginAdmin, logoutAdmin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showStats, setShowStats] = useState(false);
   const [showBlogForm, setShowBlogForm] = useState(false);
@@ -32,64 +41,48 @@ export default function Admin() {
     status: 'objavljeno'
   });
 
-  useEffect(() => {
-    const savedAuth = localStorage.getItem('adminAuth');
-    if (savedAuth === 'true') {
-      setAuthenticated(true);
-    }
-  }, []);
+  const authenticated = adminLocal;
 
   const handleLogin = (e) => {
     e.preventDefault();
     if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      setAuthenticated(true);
+      loginAdmin();
       setError('');
-      if (rememberMe) {
-        localStorage.setItem('adminAuth', 'true');
-      }
     } else {
       setError('Pogrešan email ili šifra');
     }
   };
 
   const handleLogout = () => {
-    setAuthenticated(false);
-    localStorage.removeItem('adminAuth');
+    logoutAdmin();
   };
+
+  const adminDbReady = isSupabaseAdminConfigured();
 
   const { data: requests = [], isLoading, refetch } = useQuery({
     queryKey: ['kitchenRequests'],
-    queryFn: async () => {
-      const data = await base44.entities.KitchenRequest.list('-created_date', 100);
-      return data;
-    },
-    enabled: authenticated,
+    queryFn: () => listKitchenRequests(),
+    enabled: authenticated && adminDbReady,
   });
 
   const { data: newsletters = [], isLoading: newslettersLoading } = useQuery({
     queryKey: ['newsletters'],
-    queryFn: async () => {
-      const data = await base44.entities.NewsletterSubscription.list('-created_date', 100);
-      return data;
-    },
-    enabled: authenticated,
+    queryFn: () => listNewsletterSubscriptions(),
+    enabled: authenticated && adminDbReady,
   });
 
   const { data: blogPosts = [], isLoading: blogsLoading, refetch: refetchBlogs } = useQuery({
     queryKey: ['blogPostsAdmin'],
-    queryFn: async () => {
-      const data = await base44.entities.BlogPost.list('-datum', 100);
-      return data;
-    },
-    enabled: authenticated,
+    queryFn: () => listAllBlogPosts(),
+    enabled: authenticated && adminDbReady,
   });
 
   const updateStatus = async (id, newStatus) => {
     try {
-      await base44.entities.KitchenRequest.update(id, { status: newStatus });
+      await updateKitchenRequestStatus(id, newStatus);
       refetch();
-    } catch (error) {
-      console.error('Greška pri ažuriranju statusa:', error);
+    } catch (err) {
+      console.error('Greška pri ažuriranju statusa:', err);
     }
   };
 
@@ -116,9 +109,9 @@ export default function Admin() {
     e.preventDefault();
     try {
       if (editingBlog) {
-        await base44.entities.BlogPost.update(editingBlog.id, blogForm);
+        await updateBlogPost(editingBlog.id, blogForm);
       } else {
-        await base44.entities.BlogPost.create(blogForm);
+        await createBlogPost(blogForm);
       }
       refetchBlogs();
       setShowBlogForm(false);
@@ -153,7 +146,7 @@ export default function Admin() {
   const handleDeleteBlog = async (id) => {
     if (window.confirm('Da li ste sigurni da želite da obrišete ovaj post?')) {
       try {
-        await base44.entities.BlogPost.delete(id);
+        await deleteBlogPost(id);
         refetchBlogs();
       } catch (error) {
         console.error('Greška pri brisanju blog posta:', error);
@@ -162,12 +155,34 @@ export default function Admin() {
     }
   };
 
+  if (!isSupabaseConfigured()) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 pt-20 px-4">
+        <Card className="w-full max-w-lg">
+          <CardHeader>
+            <CardTitle className="text-xl text-center">Supabase nije podešen</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-zinc-600 space-y-2">
+            <p>U <code className="bg-zinc-100 px-1 rounded">.env</code> dodaj bar:</p>
+            <pre className="bg-zinc-100 p-3 rounded text-xs overflow-x-auto whitespace-pre-wrap">
+              VITE_SUPABASE_URL=https://xxx.supabase.co{'\n'}
+              VITE_SUPABASE_PUBLISHABLE_KEY=...{'\n'}
+              VITE_SUPABASE_SERVICE_ROLE_KEY=...
+            </pre>
+            <p>Zatim u Supabase SQL Editor pokreni <code className="bg-zinc-100 px-1 rounded">supabase/schema.sql</code>.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-50 pt-20">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-2xl text-center">Admin prijava</CardTitle>
+            <p className="text-sm text-zinc-500 text-center">Lokalna šifra (možeš promeniti u kodu ili .env)</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -191,18 +206,6 @@ export default function Admin() {
                   required
                 />
               </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="rememberMe"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-[#c8102e] border-gray-300 rounded focus:ring-[#c8102e]"
-                />
-                <label htmlFor="rememberMe" className="text-sm">
-                  Zapamti me na ovom uređaju
-                </label>
-              </div>
               {error && (
                 <p className="text-sm text-red-600">{error}</p>
               )}
@@ -210,6 +213,29 @@ export default function Admin() {
                 Prijavi se
               </Button>
             </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (authenticated && !adminDbReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 pt-20 px-4">
+        <Card className="w-full max-w-lg">
+          <CardHeader>
+            <CardTitle className="text-xl text-center">Nedostaje service role ključ</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-zinc-600 space-y-3">
+            <p>
+              U <code className="bg-zinc-100 px-1 rounded">.env</code> dodaj{' '}
+              <code className="bg-zinc-100 px-1 rounded">VITE_SUPABASE_SERVICE_ROLE_KEY</code> — vrednost iz
+              Supabase → <strong>Project Settings → API → service_role</strong> (secret, dug JWT).
+            </p>
+            <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+              Ovaj ključ u frontendu zaobilazi RLS; drži ga tajnim i ne deli javno.
+            </p>
+            <Button variant="outline" onClick={handleLogout}>Nazad na prijavu</Button>
           </CardContent>
         </Card>
       </div>
@@ -493,7 +519,7 @@ export default function Admin() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {new Date(newsletter.created_date).toLocaleDateString('sr-RS')}
+                          {new Date(newsletter.created_date ?? newsletter.created_at).toLocaleDateString('sr-RS')}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -577,7 +603,7 @@ export default function Admin() {
                           onChange={(e) => setBlogForm({ ...blogForm, status: e.target.value })}
                         >
                           <option value="objavljeno">Objavljeno</option>
-                          <option value="draft">Draft</option>
+                          <option value="nacrt">Nacrt</option>
                         </select>
                       </div>
                     </div>
@@ -634,7 +660,7 @@ export default function Admin() {
                             <TableCell>{new Date(post.datum).toLocaleDateString('sr-RS')}</TableCell>
                             <TableCell>
                               <Badge className={post.status === 'objavljeno' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                                {post.status === 'objavljeno' ? 'Objavljeno' : 'Draft'}
+                                {post.status === 'objavljeno' ? 'Objavljeno' : 'Nacrt'}
                               </Badge>
                             </TableCell>
                             <TableCell>
